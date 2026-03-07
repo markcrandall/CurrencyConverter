@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     <title>Currency Converter</title>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -409,6 +415,25 @@
         .saved-actions button:hover { border-color: #3b82f6; color: #e2e8f0; }
         .saved-actions button.danger:hover { border-color: #f87171; color: #f87171; }
         .saved-actions button.confirming { border-color: #f87171; color: #f87171; background: #1c1520; }
+
+        /* Update banner */
+        .update-banner {
+            display: none;
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #3b82f6;
+            color: #fff;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            z-index: 200;
+        }
+
+        .update-banner.show { display: block; }
     </style>
 </head>
 <body>
@@ -851,6 +876,24 @@
         }
 
         init();
+
+        // --- PWA Service Worker ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then((reg) => {
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                            $('updateBanner').classList.add('show');
+                        }
+                    });
+                });
+            }).catch(err => console.warn('SW registration failed:', err));
+
+            $('updateBanner').addEventListener('click', () => location.reload());
+        }
     </script>
+
+    <div class="update-banner" id="updateBanner">Update available — tap to reload</div>
 </body>
 </html>
