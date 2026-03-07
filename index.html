@@ -53,7 +53,22 @@
             letter-spacing: 0.05em;
         }
 
-        #amount { font-size: 1.4rem; padding: 0.85rem 1rem; }
+        .amount-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .amount-prefix {
+            position: absolute;
+            left: 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #64748b;
+            pointer-events: none;
+        }
+
+        #amount { font-size: 1.4rem; padding: 0.85rem 1rem 0.85rem 3.5rem; }
 
         input, select {
             width: 100%;
@@ -445,7 +460,10 @@
 
         <div class="field">
             <label for="amount">Amount</label>
-            <input type="number" id="amount" value="1" min="0" step="any">
+            <div class="amount-wrap">
+                <span class="amount-prefix" id="amountPrefix">USD</span>
+                <input type="number" id="amount" value="1" min="0" step="any">
+            </div>
         </div>
 
         <div class="currency-row">
@@ -789,6 +807,7 @@
             const amount = parseFloat($('amount').value) || 0;
             const from = $('from').value;
             const to = $('to').value;
+            $('amountPrefix').textContent = from;
 
             // Frankfurter returns rates relative to the base (EUR)
             const fromRate = from === state.base ? 1 : state.rates[from];
