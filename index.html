@@ -482,6 +482,8 @@
         <div class="saved-panel">
             <div class="config-header">
                 <h2>Saved Conversions</h2>
+                <button id="exportCsv" style="background:none;border:1px solid #334155;color:#94a3b8;font-size:0.75rem;padding:0.25rem 0.6rem;border-radius:6px;cursor:pointer;margin-left:0.5rem;">Export CSV</button>
+                <span style="flex:1"></span>
                 <button class="close-btn" id="savedClose">&times;</button>
             </div>
             <div class="saved-list" id="savedList"></div>
@@ -705,6 +707,24 @@
             $('saveNote').value = '';
         }
 
+        function exportCsv() {
+            const saved = loadSaved();
+            if (saved.length === 0) return;
+
+            const header = 'Date,From,To,From Amount,To Amount,Note';
+            const rows = saved.map(s => {
+                const esc = (v) => `"${(v || '').replace(/"/g, '""')}"`;
+                return [esc(s.date), s.from, s.to, esc(s.fromFormatted), esc(s.toFormatted), esc(s.note)].join(',');
+            });
+
+            const blob = new Blob(['\uFEFF' + header + '\n' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `conversions-${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
         function openSaved() {
             const saved = loadSaved();
             const listEl = $('savedList');
@@ -842,6 +862,7 @@
                 $('savedOverlay').addEventListener('click', (e) => {
                     if (e.target === $('savedOverlay')) closeSaved();
                 });
+                $('exportCsv').addEventListener('click', exportCsv);
                 $('savedClearAll').addEventListener('click', clearAllSaved);
                 $('savedList').addEventListener('click', (e) => {
                     const btn = e.target.closest('.saved-delete');
