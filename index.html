@@ -310,13 +310,45 @@
             gap: 0 0.5rem;
         }
 
-        .saved-item .saved-note {
+        .saved-note-row {
             grid-column: 1 / -1;
+            position: relative;
+            margin-top: 0.15rem;
+        }
+
+        .saved-note-row input {
+            width: 100%;
             font-size: 0.78rem;
             color: #94a3b8;
             font-style: italic;
-            margin-top: 0.15rem;
+            cursor: text;
+            background: none;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            padding: 0.15rem 1.2rem 0.15rem 0.3rem;
+            outline: none;
+            font-family: inherit;
         }
+
+        .saved-note-row input:hover { border-color: #334155; }
+        .saved-note-row input:focus { border-color: #3b82f6; color: #e2e8f0; }
+
+        .saved-note-row .note-clear {
+            position: absolute;
+            right: 0.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 0.85rem;
+            cursor: pointer;
+            padding: 0 0.2rem;
+            display: none;
+        }
+
+        .saved-note-row input:focus ~ .note-clear.has-note { display: block; }
+        .saved-note-row .note-clear:hover { color: #f87171; }
 
         .saved-item:hover { background: #263348; }
 
@@ -409,8 +441,11 @@
             <div class="rate" id="rate"></div>
         </div>
 
+        <div style="margin-top:1rem;">
+            <input type="text" id="saveNote" placeholder="Optional Note" style="font-size:0.85rem; padding:0.5rem 0.75rem;">
+        </div>
+
         <div class="action-row">
-            <input type="text" id="saveNote" placeholder="Optional Note" style="flex:2; font-size:0.85rem; padding:0.5rem 0.75rem;">
             <button id="saveBtn">Save</button>
             <button id="showSavedBtn">Show Saved</button>
         </div>
@@ -659,7 +694,10 @@
                         </span>
                         <span class="saved-date">${s.date}</span>
                         <button class="saved-delete" data-idx="${i}" title="Delete">&times;</button>
-                        ${s.note ? `<span class="saved-note">${s.note}</span>` : ''}
+                        <div class="saved-note-row">
+                            <input class="saved-note" data-idx="${i}" value="${(s.note || '').replace(/"/g, '&quot;')}" placeholder="add note...">
+                            <button class="note-clear ${s.note ? 'has-note' : ''}" data-idx="${i}" title="Clear note">&times;</button>
+                        </div>
                     </div>`
                 ).join('');
             }
@@ -783,6 +821,28 @@
                 $('savedList').addEventListener('click', (e) => {
                     const btn = e.target.closest('.saved-delete');
                     if (btn) deleteSaved(parseInt(btn.dataset.idx));
+                });
+                $('savedList').addEventListener('input', (e) => {
+                    if (e.target.classList.contains('saved-note')) {
+                        const idx = parseInt(e.target.dataset.idx);
+                        const saved = loadSaved();
+                        saved[idx].note = e.target.value.trim();
+                        localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+                        const clearBtn = e.target.nextElementSibling;
+                        clearBtn.classList.toggle('has-note', !!saved[idx].note);
+                    }
+                });
+                $('savedList').addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('note-clear')) {
+                        e.preventDefault();
+                        const idx = parseInt(e.target.dataset.idx);
+                        const saved = loadSaved();
+                        saved[idx].note = '';
+                        localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+                        const input = e.target.previousElementSibling;
+                        input.value = '';
+                        e.target.classList.remove('has-note');
+                    }
                 });
             } catch (err) {
                 setStatus(`Failed to load rates: ${err.message}`, true);
