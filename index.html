@@ -35,6 +35,7 @@
         }
 
         .field { margin-bottom: 1rem; }
+        .currency-row .field { margin-bottom: 0.25rem; }
 
         label {
             display: block;
@@ -70,14 +71,13 @@
 
         .swap-btn {
             display: block;
-            margin: 0.25rem auto;
+            margin: 0.125rem auto 0.25rem;
             background: none;
             border: 1px solid #334155;
             color: #94a3b8;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 1.2rem;
+            padding: 0.4rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
             cursor: pointer;
             transition: all 0.2s;
         }
@@ -261,6 +261,122 @@
         }
 
         .config-actions button.primary:hover { background: #2563eb; }
+
+        /* Action buttons row */
+        .action-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .action-row button {
+            flex: 1;
+            padding: 0.6rem;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-row button:hover { border-color: #3b82f6; color: #e2e8f0; }
+
+        /* Saved overlay (reuses config-overlay pattern) */
+        .saved-panel {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 1.5rem;
+            width: 95%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .saved-list {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .saved-item {
+            padding: 0.75rem 0.5rem;
+            border-bottom: 1px solid #1a2332;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            align-items: center;
+            gap: 0 0.5rem;
+        }
+
+        .saved-item .saved-note {
+            grid-column: 1 / -1;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            font-style: italic;
+            margin-top: 0.15rem;
+        }
+
+        .saved-item:hover { background: #263348; }
+
+        .saved-item .saved-conversion {
+            font-size: 0.9rem;
+            color: #e2e8f0;
+        }
+
+        .saved-item .saved-conversion .saved-result {
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
+        .saved-item .saved-date {
+            font-size: 0.7rem;
+            color: #64748b;
+            white-space: nowrap;
+            margin-left: 1rem;
+        }
+
+        .saved-item .saved-delete {
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0 0.25rem;
+            margin-left: 0.5rem;
+        }
+
+        .saved-item .saved-delete:hover { color: #f87171; }
+
+        .saved-empty {
+            text-align: center;
+            color: #64748b;
+            padding: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .saved-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .saved-actions button {
+            flex: 1;
+            padding: 0.6rem;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .saved-actions button:hover { border-color: #3b82f6; color: #e2e8f0; }
+        .saved-actions button.danger:hover { border-color: #f87171; color: #f87171; }
+        .saved-actions button.confirming { border-color: #f87171; color: #f87171; background: #1c1520; }
     </style>
 </head>
 <body>
@@ -286,14 +402,33 @@
             </div>
         </div>
 
-        <button class="swap-btn" id="swap" title="Swap currencies">&#8645;</button>
+        <button class="swap-btn" id="swap" title="Swap currencies">Switch</button>
 
         <div class="result">
             <div class="converted" id="converted">--</div>
             <div class="rate" id="rate"></div>
         </div>
 
+        <div class="action-row">
+            <input type="text" id="saveNote" placeholder="Optional Note" style="flex:2; font-size:0.85rem; padding:0.5rem 0.75rem;">
+            <button id="saveBtn">Save</button>
+            <button id="showSavedBtn">Show Saved</button>
+        </div>
+
         <div class="status" id="status">Loading rates...</div>
+    </div>
+
+    <div class="config-overlay" id="savedOverlay">
+        <div class="saved-panel">
+            <div class="config-header">
+                <h2>Saved Conversions</h2>
+                <button class="close-btn" id="savedClose">&times;</button>
+            </div>
+            <div class="saved-list" id="savedList"></div>
+            <div class="saved-actions">
+                <button class="danger" id="savedClearAll">Clear All</button>
+            </div>
+        </div>
     </div>
 
     <div class="config-overlay" id="configOverlay">
@@ -321,6 +456,7 @@
         const CACHE_KEY = 'cc_rates';
         const PREFS_KEY = 'cc_prefs';
         const LISTS_KEY = 'cc_lists';
+        const SAVED_KEY = 'cc_saved';
         const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours (ECB updates once daily ~16:00 CET)
 
         const $ = (id) => document.getElementById(id);
@@ -472,6 +608,98 @@
             });
         }
 
+        // --- Saved conversions ---
+        function loadSaved() {
+            try {
+                return JSON.parse(localStorage.getItem(SAVED_KEY)) || [];
+            } catch { return []; }
+        }
+
+        function saveCurrent() {
+            if (!state.rates) return;
+
+            const amount = parseFloat($('amount').value) || 0;
+            const from = $('from').value;
+            const to = $('to').value;
+            const fromRate = from === state.base ? 1 : state.rates[from];
+            const toRate = to === state.base ? 1 : state.rates[to];
+            if (!fromRate || !toRate) return;
+
+            const result = amount * (toRate / fromRate);
+            const fromFormatted = new Intl.NumberFormat(undefined, {
+                style: 'currency', currency: from
+            }).format(amount);
+            const toFormatted = new Intl.NumberFormat(undefined, {
+                style: 'currency', currency: to
+            }).format(result);
+
+            const saved = loadSaved();
+            const note = $('saveNote').value.trim();
+            saved.unshift({
+                from, to, amount,
+                fromFormatted, toFormatted,
+                note,
+                date: new Date().toLocaleString()
+            });
+            localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+            $('saveNote').value = '';
+        }
+
+        function openSaved() {
+            const saved = loadSaved();
+            const listEl = $('savedList');
+
+            if (saved.length === 0) {
+                listEl.innerHTML = '<div class="saved-empty">No saved conversions yet.</div>';
+            } else {
+                listEl.innerHTML = saved.map((s, i) =>
+                    `<div class="saved-item">
+                        <span class="saved-conversion">
+                            ${s.fromFormatted} = <span class="saved-result">${s.toFormatted}</span>
+                        </span>
+                        <span class="saved-date">${s.date}</span>
+                        <button class="saved-delete" data-idx="${i}" title="Delete">&times;</button>
+                        ${s.note ? `<span class="saved-note">${s.note}</span>` : ''}
+                    </div>`
+                ).join('');
+            }
+
+            $('savedOverlay').classList.add('open');
+        }
+
+        function closeSaved() {
+            $('savedOverlay').classList.remove('open');
+        }
+
+        function deleteSaved(idx) {
+            const saved = loadSaved();
+            saved.splice(idx, 1);
+            localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+            openSaved();
+        }
+
+        function clearAllSaved() {
+            const btn = $('savedClearAll');
+            if (btn.dataset.confirm) {
+                delete btn.dataset.confirm;
+                btn.textContent = 'Clear All';
+                btn.classList.remove('confirming');
+                localStorage.removeItem(SAVED_KEY);
+                openSaved();
+            } else {
+                btn.dataset.confirm = '1';
+                btn.textContent = 'Are you sure?';
+                btn.classList.add('confirming');
+                setTimeout(() => {
+                    if (btn.dataset.confirm) {
+                        delete btn.dataset.confirm;
+                        btn.textContent = 'Clear All';
+                        btn.classList.remove('confirming');
+                    }
+                }, 3000);
+            }
+        }
+
         function convert() {
             if (!state.rates) return;
 
@@ -543,6 +771,19 @@
                 $('configSave').addEventListener('click', saveConfig);
                 $('configSelectAll').addEventListener('click', () => configSetAll(true));
                 $('configSelectNone').addEventListener('click', () => configSetAll(false));
+
+                // Save / Show Saved
+                $('saveBtn').addEventListener('click', () => { saveCurrent(); openSaved(); });
+                $('showSavedBtn').addEventListener('click', openSaved);
+                $('savedClose').addEventListener('click', closeSaved);
+                $('savedOverlay').addEventListener('click', (e) => {
+                    if (e.target === $('savedOverlay')) closeSaved();
+                });
+                $('savedClearAll').addEventListener('click', clearAllSaved);
+                $('savedList').addEventListener('click', (e) => {
+                    const btn = e.target.closest('.saved-delete');
+                    if (btn) deleteSaved(parseInt(btn.dataset.idx));
+                });
             } catch (err) {
                 setStatus(`Failed to load rates: ${err.message}`, true);
                 console.error(err);
