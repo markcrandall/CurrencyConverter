@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Converter</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #f8fafc;
+        }
+
+        .field { margin-bottom: 1rem; }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #94a3b8;
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        #amount { font-size: 1.4rem; padding: 0.85rem 1rem; }
+
+        input, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus { border-color: #3b82f6; }
+
+        .currency-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .swap-btn {
+            display: block;
+            margin: 0.25rem auto;
+            background: none;
+            border: 1px solid #334155;
+            color: #94a3b8;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .swap-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+
+        .result {
+            text-align: center;
+            padding: 1.25rem;
+            background: #0f172a;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .result .converted {
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: #38bdf8;
+        }
+
+        .result .rate {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 0.35rem;
+        }
+
+        .status {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.75rem;
+        }
+
+        .status.error { color: #f87171; }
+
+        /* Header with gear */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .header h1 { margin-bottom: 0; }
+
+        .gear-btn {
+            position: absolute;
+            right: 0;
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            transition: color 0.2s, transform 0.3s;
+        }
+
+        .gear-btn:hover { color: #e2e8f0; transform: rotate(45deg); }
+
+        /* Config panel overlay */
+        .config-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .config-overlay.open { display: flex; }
+
+        .config-panel {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 1.5rem;
+            width: 95%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .config-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .config-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.4rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-btn:hover { color: #e2e8f0; }
+
+        .config-cols {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 0 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0 0.25rem 0.5rem;
+            border-bottom: 1px solid #334155;
+        }
+
+        .config-list {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .config-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 0 1rem;
+            align-items: center;
+            padding: 0.5rem 0.25rem;
+            border-bottom: 1px solid #1a2332;
+        }
+
+        .config-row:hover { background: #263348; }
+
+        .config-row .currency-label {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+        }
+
+        .config-row .currency-label .code {
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .config-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #3b82f6;
+            cursor: pointer;
+            justify-self: center;
+        }
+
+        .config-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .config-actions button {
+            flex: 1;
+            padding: 0.6rem;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .config-actions button:hover { border-color: #3b82f6; color: #e2e8f0; }
+
+        .config-actions button.primary {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+
+        .config-actions button.primary:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Currency Converter</h1>
+            <button class="gear-btn" id="gear" title="Configure currencies">&#9881;</button>
+        </div>
+
+        <div class="field">
+            <label for="amount">Amount</label>
+            <input type="number" id="amount" value="1" min="0" step="any">
+        </div>
+
+        <div class="currency-row">
+            <div class="field">
+                <label for="from">From</label>
+                <select id="from"></select>
+            </div>
+            <div class="field">
+                <label for="to">To</label>
+                <select id="to"></select>
+            </div>
+        </div>
+
+        <button class="swap-btn" id="swap" title="Swap currencies">&#8645;</button>
+
+        <div class="result">
+            <div class="converted" id="converted">--</div>
+            <div class="rate" id="rate"></div>
+        </div>
+
+        <div class="status" id="status">Loading rates...</div>
+    </div>
+
+    <div class="config-overlay" id="configOverlay">
+        <div class="config-panel">
+            <div class="config-header">
+                <h2>Currency Lists</h2>
+                <button class="close-btn" id="configClose">&times;</button>
+            </div>
+            <div class="config-cols">
+                <span>Currency</span>
+                <span id="colA">From</span>
+                <span id="colB">To</span>
+            </div>
+            <div class="config-list" id="configList"></div>
+            <div class="config-actions">
+                <button id="configSelectAll">All On</button>
+                <button id="configSelectNone">All Off</button>
+                <button class="primary" id="configSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'https://api.frankfurter.app';
+        const CACHE_KEY = 'cc_rates';
+        const PREFS_KEY = 'cc_prefs';
+        const LISTS_KEY = 'cc_lists';
+        const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours (ECB updates once daily ~16:00 CET)
+
+        const $ = (id) => document.getElementById(id);
+
+        const state = { rates: null, base: 'EUR', currencies: {} };
+
+        // --- Preferences ---
+        function loadPrefs() {
+            try {
+                return JSON.parse(localStorage.getItem(PREFS_KEY)) || {};
+            } catch { return {}; }
+        }
+
+        function savePrefs() {
+            localStorage.setItem(PREFS_KEY, JSON.stringify({
+                from: $('from').value,
+                to: $('to').value,
+                amount: $('amount').value
+            }));
+        }
+
+        function loadLists() {
+            try {
+                return JSON.parse(localStorage.getItem(LISTS_KEY));
+            } catch { return null; }
+        }
+
+        function saveLists(lists) {
+            localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+        }
+
+        // --- Cache ---
+        function getCachedRates() {
+            try {
+                const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+                if (cached && Date.now() - cached.ts < CACHE_TTL) return cached;
+            } catch { /* ignore */ }
+            return null;
+        }
+
+        function cacheRates(data) {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, ts: Date.now() }));
+        }
+
+        // --- API ---
+        async function fetchRates() {
+            const cached = getCachedRates();
+            if (cached) {
+                setStatus(`Rates from cache (${new Date(cached.ts).toLocaleTimeString()})`);
+                return cached;
+            }
+
+            setStatus('Fetching latest rates...');
+            const res = await fetch(`${API}/latest`);
+            if (!res.ok) throw new Error(`API error: ${res.status}`);
+            const data = await res.json();
+            cacheRates(data);
+            setStatus(`Rates updated (${data.date})`);
+            return data;
+        }
+
+        // --- UI ---
+        function setStatus(msg, isError = false) {
+            const el = $('status');
+            el.textContent = msg;
+            el.className = 'status' + (isError ? ' error' : '');
+        }
+
+        function getAllCodes() {
+            const codes = Object.keys(state.currencies).sort();
+            if (!codes.includes(state.base)) codes.push(state.base);
+            codes.sort();
+            return codes;
+        }
+
+        function getDefaultLists(codes) {
+            const lists = {};
+            codes.forEach(c => { lists[c] = { a: true, b: true }; });
+            return lists;
+        }
+
+        function populateSelects() {
+            const codes = getAllCodes();
+            const lists = loadLists() || getDefaultLists(codes);
+            const prefs = loadPrefs();
+
+            const fromCodes = codes.filter(c => lists[c]?.a);
+            const toCodes = codes.filter(c => lists[c]?.b);
+
+            const fromSelect = $('from');
+            const toSelect = $('to');
+
+            fromSelect.innerHTML = fromCodes.map(c =>
+                `<option value="${c}">${c} — ${state.currencies[c] || c}</option>`
+            ).join('');
+
+            toSelect.innerHTML = toCodes.map(c =>
+                `<option value="${c}">${c} — ${state.currencies[c] || c}</option>`
+            ).join('');
+
+            const prefFrom = prefs.from || 'USD';
+            const prefTo = prefs.to || 'EUR';
+            if (fromCodes.includes(prefFrom)) fromSelect.value = prefFrom;
+            if (toCodes.includes(prefTo)) toSelect.value = prefTo;
+            if (prefs.amount) $('amount').value = prefs.amount;
+        }
+
+        // --- Config panel ---
+        function openConfig() {
+            const codes = getAllCodes();
+            const lists = loadLists() || getDefaultLists(codes);
+            const listEl = $('configList');
+
+            listEl.innerHTML = codes.map(c => {
+                const name = state.currencies[c] || c;
+                const aChecked = lists[c]?.a ? 'checked' : '';
+                const bChecked = lists[c]?.b ? 'checked' : '';
+                return `<div class="config-row">
+                    <span class="currency-label"><span class="code">${c}</span> — ${name}</span>
+                    <input type="checkbox" data-code="${c}" data-list="a" ${aChecked}>
+                    <input type="checkbox" data-code="${c}" data-list="b" ${bChecked}>
+                </div>`;
+            }).join('');
+
+            $('configOverlay').classList.add('open');
+        }
+
+        function closeConfig() {
+            $('configOverlay').classList.remove('open');
+        }
+
+        function saveConfig() {
+            const lists = {};
+            $('configList').querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                const code = cb.dataset.code;
+                const list = cb.dataset.list;
+                if (!lists[code]) lists[code] = { a: false, b: false };
+                lists[code][list] = cb.checked;
+            });
+            saveLists(lists);
+            populateSelects();
+            convert();
+            closeConfig();
+        }
+
+        function configSetAll(val) {
+            $('configList').querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = val;
+            });
+        }
+
+        function convert() {
+            if (!state.rates) return;
+
+            const amount = parseFloat($('amount').value) || 0;
+            const from = $('from').value;
+            const to = $('to').value;
+
+            // Frankfurter returns rates relative to the base (EUR)
+            const fromRate = from === state.base ? 1 : state.rates[from];
+            const toRate = to === state.base ? 1 : state.rates[to];
+
+            if (!fromRate || !toRate) {
+                $('converted').textContent = '--';
+                $('rate').textContent = '';
+                return;
+            }
+
+            const result = amount * (toRate / fromRate);
+            const unitRate = toRate / fromRate;
+
+            $('converted').textContent = new Intl.NumberFormat(undefined, {
+                style: 'currency', currency: to
+            }).format(result);
+            $('rate').textContent = `1 ${from} = ${unitRate.toFixed(4)} ${to}`;
+
+            savePrefs();
+        }
+
+        // --- Init ---
+        async function init() {
+            try {
+                // Fetch currency names for labels
+                const [ratesData, currenciesRes] = await Promise.all([
+                    fetchRates(),
+                    fetch(`${API}/currencies`)
+                ]);
+
+                state.currencies = await currenciesRes.json();
+                state.rates = ratesData.rates;
+                state.base = ratesData.base;
+
+                populateSelects();
+                convert();
+
+                // Event listeners
+                $('amount').addEventListener('input', convert);
+                $('from').addEventListener('change', convert);
+                $('to').addEventListener('change', convert);
+                $('swap').addEventListener('click', () => {
+                    // Swap the list assignments, then rebuild selects
+                    const lists = loadLists() || getDefaultLists(getAllCodes());
+                    Object.values(lists).forEach(l => { const t = l.a; l.a = l.b; l.b = t; });
+                    saveLists(lists);
+
+                    const prevFrom = $('from').value;
+                    const prevTo = $('to').value;
+                    populateSelects();
+                    $('from').value = prevTo;
+                    $('to').value = prevFrom;
+                    convert();
+                });
+
+                // Config panel
+                $('gear').addEventListener('click', openConfig);
+                $('configClose').addEventListener('click', closeConfig);
+                $('configOverlay').addEventListener('click', (e) => {
+                    if (e.target === $('configOverlay')) closeConfig();
+                });
+                $('configSave').addEventListener('click', saveConfig);
+                $('configSelectAll').addEventListener('click', () => configSetAll(true));
+                $('configSelectNone').addEventListener('click', () => configSetAll(false));
+            } catch (err) {
+                setStatus(`Failed to load rates: ${err.message}`, true);
+                console.error(err);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
