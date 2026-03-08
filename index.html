@@ -919,11 +919,13 @@
 
         // --- PWA Service Worker ---
         if ('serviceWorker' in navigator) {
+            const hadController = !!navigator.serviceWorker.controller;
             navigator.serviceWorker.register('sw.js').then((reg) => {
                 reg.addEventListener('updatefound', () => {
+                    if (!hadController) return; // skip first install
                     const newWorker = reg.installing;
                     newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                        if (newWorker.state === 'activated') {
                             $('updateBanner').classList.add('show');
                         }
                     });
